@@ -1,64 +1,95 @@
+from pathlib import Path
+import sys
+import time
+
+
 def find_longest_chain(number, begin_elements, used_numbers):
-    end_element = f"{number[-2]}{number[-1]}"
-
     best_answer = number
+    end = number[-2:]
 
-    if end_element not in begin_elements:
-        return best_answer
+    for next_number in begin_elements.get(end, ()):
 
-    if end_element in begin_elements:
-        for next_number in begin_elements[end_element]:
+        if next_number in used_numbers:
+            continue
 
-            if next_number in used_numbers:
-                continue
+        used_numbers.add(next_number)
 
-            used_numbers.append(next_number)
+        chain = find_longest_chain(
+            next_number,
+            begin_elements,
+            used_numbers
+        )
 
-            chain = find_longest_chain(next_number, begin_elements, used_numbers)
+        candidate_length = len(number) + len(chain) - 2
 
-            if len(number + chain[2:]) > len(best_answer):
-                best_answer = number + chain[2:]
+        if candidate_length > len(best_answer):
+            best_answer = number + chain[2:]
 
-            used_numbers.remove(next_number)
+        used_numbers.remove(next_number)
 
     return best_answer
 
+
 def find_answers(numbers, begin_elements):
-    answer = ''
+    used_numbers = set()
     answers = []
-    used_numbers = []
 
-    for num in numbers:
-
+    for number in numbers:
         used_numbers.clear()
+        used_numbers.add(number)
 
-        used_numbers.append(num)
-
-        answer = find_longest_chain(num, begin_elements, used_numbers)
-
-        answers.append(answer)
-
+        answers.append(
+            find_longest_chain(
+                number,
+                begin_elements,
+                used_numbers
+            )
+        )
 
     return answers
-    
+
+
+def load_numbers(filename):
+    with Path(filename).open(encoding="utf-8") as file:
+        return [line.strip() for line in file if line.strip()]
+
+
+def build_graph(numbers):
+    begin_elements = {}
+
+    for number in numbers:
+        begin_elements.setdefault(number[:2], []).append(number)
+
+    return begin_elements
+
+
+def choose_file():
+    if len(sys.argv) > 1:
+        return sys.argv[1]
+
+    filename = input("File (Enter = source.txt): ").strip()
+
+    if not filename:
+        filename = "source.txt"
+
+    return filename
 
 
 def main():
-    numbers = []
-    begin_elements = {}
+    start = time.perf_counter()
 
-    with open("source.txt", "r", encoding="utf-8") as file:
-        numbers = [line.strip() for line in file]
+    filename = choose_file()
 
-    for num in numbers:
-        first_element = f"{num[0]}{num[1]}"
-
-        if first_element  not in begin_elements:
-            begin_elements[first_element] = []
-        begin_elements[first_element].append(num)
+    numbers = load_numbers(filename)
+    begin_elements = build_graph(numbers)
 
     answers = find_answers(numbers, begin_elements)
+
+    print("Longest chain:")
     print(max(answers, key=len))
+
+    print(f"Execution time: {time.perf_counter() - start:.3f} sec")
+
 
 if __name__ == "__main__":
     main()
